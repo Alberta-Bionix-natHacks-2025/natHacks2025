@@ -16,7 +16,7 @@ def run_ganglion_realtime_plot():
     # - Windows: 'COM5', 'COM3', etc.
     # - macOS: '/dev/tty.usbmodemXXXX'
     # - Linux: '/dev/ttyUSB0' or '/dev/ttyACM0'
-    serial_port = 'COM5'
+    serial_port = 'COM8'
 
     # 2. CONFIGURE BRAINFLOW CONNECTION
     params = BrainFlowInputParams()
@@ -41,7 +41,7 @@ def run_ganglion_realtime_plot():
         ax.set_title("Real-Time EEG (Channel 1)")
         ax.set_xlabel("Samples")
         ax.set_ylabel("Microvolts (μV)")
-        ax.set_ylim(-200, 200)   # Adjust to match expected signal range
+        ax.set_ylim(-60, 60)   # Adjust to match expected signal range
         ax.set_xlim(0, sampling_rate * 5)  # Show 5 seconds of data at a time
 
         # Create an empty line that we'll update with live data

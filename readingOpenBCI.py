@@ -8,7 +8,7 @@ def run_ganglion_stream():
     # On Windows it's usually COM#, on Linux it's /dev/ttyUSB# or similar
     # On macOS it's usually /dev/tty.usbmodem# or similar
     
-    serial_port = '/dev/cu.usbmodem11' # CHANGE THIS
+    serial_port = 'COM8' # CHANGE THIS
     
     params = BrainFlowInputParams()
     params.serial_port = serial_port
