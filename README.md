@@ -2,7 +2,7 @@
 Alberta Bionix's natHacks 2025 project repository
 
 All python packages used:\
-    Pytorch - https://pytorch.org/ \
+    * Pytorch - https://pytorch.org/ \
       Windows:\
         pip3 install torch torchvision --index-url https://download.pytorch.org/whl/cu126 \
       Mac: \
