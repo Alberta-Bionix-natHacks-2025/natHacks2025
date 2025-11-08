@@ -113,64 +113,6 @@ class CSP(BaseEstimator, TransformerMixin):
         # Average over epochs
         return cov_sum / n_epochs
 
-
-class MultiClassCSP:
-    """
-    CSP for multi-class problems using One-vs-Rest approach
-    """
-    
-    def __init__(self, n_components=4):
-        self.n_components = n_components
-        self.csp_filters = {}
-        
-    def fit(self, X, y):
-        """
-        Fit one CSP per class (one-vs-rest)
-        
-        Input:
-        - X: (n_epochs, n_channels, n_timepoints)
-        - y: (n_epochs,) - class labels
-        """
-        classes = np.unique(y)
-        
-        for cls in classes:
-            print(f"Training CSP for class {cls} vs rest...")
-            
-            # Create binary labels (this class vs all others)
-            y_binary = (y == cls).astype(int)
-            
-            # Fit CSP
-            csp = CSP(n_components=self.n_components)
-            csp.fit(X, y_binary)
-            
-            self.csp_filters[cls] = csp
-        
-        return self
-    
-    def transform(self, X):
-        """
-        Transform using all CSP filters and concatenate
-        
-        Input: X (n_epochs, n_channels, n_timepoints)
-        Output: features (n_epochs, n_classes * n_components)
-        """
-        features_list = []
-        
-        for cls in sorted(self.csp_filters.keys()):
-            csp = self.csp_filters[cls]
-            features = csp.transform(X)
-            features_list.append(features)
-        
-        # Concatenate all CSP features
-        all_features = np.concatenate(features_list, axis=1)
-        
-        return all_features
-    
-    def fit_transform(self, X, y):
-        """Fit and transform"""
-        return self.fit(X, y).transform(X)
-
-
 # Quick test
 if __name__ == '__main__':
     # Test with dummy data
@@ -196,11 +138,3 @@ if __name__ == '__main__':
     print(f"Mean features class 0: {features[y==0].mean(axis=0)}")
     print(f"Mean features class 1: {features[y==1].mean(axis=0)}")
     
-    # Test multi-class CSP
-    y_multiclass = np.array([0]*16 + [1]*17 + [2]*17)
-    X_multiclass = np.random.randn(50, 3, 480)
-    
-    mcsp = MultiClassCSP(n_components=4)
-    features_mc = mcsp.fit_transform(X_multiclass, y_multiclass)
-    
-    print(f"\nMulti-class CSP features shape: {features_mc.shape}")  # Should be (50, 8)
