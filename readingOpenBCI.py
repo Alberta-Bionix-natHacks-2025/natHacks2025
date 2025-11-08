@@ -3,6 +3,7 @@ import numpy as np
 from brainflow.board_shim import BoardShim, BrainFlowInputParams, BoardIds
 from brainflow.data_filter import DataFilter, FilterTypes
 
+
 def run_ganglion_stream():
     # Ensure you replace 'COMX' with the actual serial port of your OpenBCI dongle
     # On Windows it's usually COM#, on Linux it's /dev/ttyUSB# or similar
@@ -53,6 +54,7 @@ def run_ganglion_stream():
             print("Stopping stream and releasing session.")
             board.stop_stream()
             board.release_session()
+
 
 if __name__ == "__main__":
     run_ganglion_stream()

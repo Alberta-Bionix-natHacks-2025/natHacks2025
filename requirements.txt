@@ -1,0 +1,2 @@
+brainflow=5.19.0
+numpy=2.3.4
