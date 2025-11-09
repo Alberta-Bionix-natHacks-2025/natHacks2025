@@ -103,7 +103,7 @@ class CSP(BaseEstimator, TransformerMixin):
 class EpochCreator:
     """Segment continuous EEG into epochs/trials"""
     
-    def __init__(self, tmin=-0.2, tmax=3.0, baseline=(-0.2, 0.0)):
+    def __init__(self, tmin=-1.0, tmax=4.0, baseline=(-1.0, 0.0)):
         self.tmin = tmin
         self.tmax = tmax
         self.baseline = baseline
@@ -211,58 +211,93 @@ class MotorImageryClassifier:
 # --- MAIN EXECUTION PIPELINE ---
 # =================================================================
 
-# 1. Load Data and Apply Filters
-print("Step 1: Loading and Preprocessing Raw Data...")
-# Subject 1, Runs 3 (Left/Right Hand) and 7 (Left/Right Hand)
-raw_fnames = mne.datasets.eegbci.load_data(1, [3, 7])
-raw = mne.io.read_raw_edf(raw_fnames[0], preload=True, verbose=False)
-original_raw = raw.copy()
+print("="*60)
+print("MOTOR IMAGERY BCI - TRAINING PIPELINE")
+print("="*60)
 
-# Preprocessing
-original_raw.filter(l_freq=None, h_freq=50.0, verbose=False) # Low-pass at 50Hz
-original_raw.filter(l_freq=0.1, h_freq=None, verbose=False) # High-pass at 0.1Hz
-original_raw.notch_filter(freqs=[50, 60], verbose=False)    # Notch filter
-original_raw.pick("eeg")                                    # Pick EEG channels
+# STEP 1: Load Data from Multiple Subjects
+print("\nStep 1: Loading data from multiple subjects...")
 
-# 2. Segment Data using EpochCreator
-print("Step 2: Segmenting into Epochs...")
-events, event_id_all = mne.events_from_annotations(original_raw)
+# Subject 1, Runs 3 (Left/Right Hand) and 7 (Left/Right Hand) and 11 
+subject_ids = [1, 2, 3]  # Use 3 subjects
+runs = [3, 7, 11]  # Motor imagery runs (left/right hand)
+
+all_raws = []
+for subject in subject_ids:
+    print(f"  Loading subject {subject}...")
+    for run in runs:
+        try:
+            raw_fnames = mne.datasets.eegbci.load_data(subject, [run])
+            raw = mne.io.read_raw_edf(raw_fnames[0], preload=True, verbose=False)
+            all_raws.append(raw)
+        except Exception as e:
+            print(f"    Warning: Could not load subject {subject}, run {run}: {e}")
+
+# Concatenate all runs
+raw = mne.concatenate_raws(all_raws, verbose=False)
+print(f"✓ Loaded {len(all_raws)} runs from {len(subject_ids)} subjects")
+print(f"  Total duration: {raw.times[-1]:.1f} seconds")
+
+
+# Step 2: Preprocessing
+print("\nStep 2: Preprocessing...")
+
+print("  Filtering to mu (8-12 Hz) and beta (13-30 Hz) bands...")
+raw.filter(l_freq=8.0, h_freq=30.0, fir_design='firwin', verbose=False)
+
+# Notch filter for power line noise
+raw.notch_filter(freqs=[60], verbose=False)
+
+# Standardize channel names and pick motor cortex channels
+mne.datasets.eegbci.standardize(raw)
+motor_channels = ['C3', 'C4', 'Cz']  # Minimum for motor imagery
+available_channels = [ch for ch in motor_channels if ch in raw.ch_names]
+raw.pick_channels(available_channels)
+
+print(f"✓ Using {len(available_channels)} motor cortex channels: {available_channels}")
+
+
+# 3. Segment Data using EpochCreator
+print("Step 3: Segmenting into Epochs...")
+events, event_id_all = mne.events_from_annotations(raw, verbose=False)
+
 # T1: Left Hand Motor Imagery, T2: Right Hand Motor Imagery
 event_id_binary = {'T1': 1, 'T2': 2} 
 
 # Create epochs: tmin=-0.2s to tmax=0.5s relative to the event (cue)
-epoch_creator = EpochCreator(tmin=-0.2, tmax=3.0, baseline=(-0.2, 0.0))
-epochs = epoch_creator.create_epochs(original_raw, events, event_id_binary)
+epoch_creator = EpochCreator(tmin=-1.0, tmax=4.0, baseline=(-1.0, 0.0))
+epochs = epoch_creator.create_epochs(raw, events, event_id_binary)
 
 # Extract motor imagery time window (2.0 seconds starting 0.5 seconds AFTER the cue)
-epochs_mi = epoch_creator.extract_motor_imagery_window(epochs, start=0.5, duration=2.0)
+epochs_mi = epoch_creator.extract_motor_imagery_window(epochs, start=0.5, duration=3.0)
 
 # Extract data (X) and labels (y)
 X = epochs_mi.get_data()
-y_mne_labels = epochs_mi.events[:, 2]
+y = epochs_mi.events[:, 2] - 1
 
 # Map MNE labels (1 and 2) to binary labels (0 and 1)
-y = y_mne_labels - 1 
+y = epochs_mi.events[:, 2] - 1
 
-print(f"Final epoch data shape (X): {X.shape}")
-print(f"Final label vector shape (y): {y.shape}")
+print(f"✓ Created {len(X)} epochs")
+print(f"  Shape: {X.shape}")
+print(f"  Class distribution: {np.bincount(y)}")
 
 # -----------------------------------------------------------------
-# STEP 3: Split Data for Training and Testing
+# STEP 4: Split Data for Training and Testing
 # -----------------------------------------------------------------
-print("\nStep 3: Splitting data (80% Train / 20% Test)...")
+print("\nStep 4: Splitting data (80% Train / 20% Test)...")
 X_train, X_test, y_train, y_test = train_test_split(
     X, y, test_size=0.2, random_state=42, stratify=y
 )
 
-print(f"Train set size: {X_train.shape[0]} epochs")
-print(f"Test set size: {X_test.shape[0]} epochs")
+print(f"  Train: {X_train.shape[0]} epochs")
+print(f"  Test: {X_test.shape[0]} epochs")
 
 # -----------------------------------------------------------------
-# STEP 4: Feature Extraction using CSP
+# STEP 5: Feature Extraction using CSP
 # -----------------------------------------------------------------
-print("\nStep 4: Fitting CSP and Transforming Features...")
-csp = CSP(n_components=4) 
+print("\nStep 5: Fitting CSP and Transforming Features...")
+csp = CSP(n_components=6) 
 
 # Fit CSP ONLY on the training data to prevent data leakage
 X_train_features = csp.fit_transform(X_train, y_train)
@@ -273,16 +308,41 @@ X_test_features = csp.transform(X_test)
 print(f"CSP Training Features shape: {X_train_features.shape}")
 print(f"CSP Testing Features shape: {X_test_features.shape}")
 
-# -----------------------------------------------------------------
-# STEP 5: Train and Evaluate the Classifier
-# -----------------------------------------------------------------
-print("\nStep 5: Training and Evaluating Classifier (LDA)...")
+# STEP 6: Train Classifier
+print("\nStep 6: Training LDA classifier...")
 
-# Initialize Classifier (Using LDA as specified)
-classifier = MotorImageryClassifier(model_type='LDA')
+classifier = MotorImageryClassifier(
+    model_type='LDA',
+    solver='lsqr',      # Better for small datasets
+    shrinkage='auto'    # Regularization
+)
 
-# Train the model using the transformed CSP features
 classifier.train(X_train_features, y_train)
 
-# Evaluate the model on the held-out test set
+# Cross-validation
+print("\nPerforming 5-fold cross-validation...")
+cv_scores = classifier.cross_validate(X_train_features, y_train, n_folds=5)
+
+# STEP 7: Evaluate
+print("\n" + "="*60)
+print("EVALUATION ON TEST SET")
+print("="*60)
+
 results = classifier.evaluate(X_test_features, y_test)
+
+# STEP 8: Save Model
+print("\nStep 8: Saving model...")
+os.makedirs('data/models', exist_ok=True)
+classifier.save_model('data/models/lda_classifier.pkl')
+joblib.dump(csp, 'data/models/csp_model.pkl')
+
+print("\n" + "="*60)
+print("TRAINING COMPLETE!")
+print("="*60)
+print(f"Final Test Accuracy: {results['accuracy']:.1%}")
+print(f"CV Mean: {cv_scores.mean():.1%} (±{cv_scores.std()*2:.1%})")
+
+if results['accuracy'] >= 0.70:
+    print("✓✓✓ SUCCESS! Exceeds 70% requirement")
+else:
+    print(f"⚠️ Below 70% target")
