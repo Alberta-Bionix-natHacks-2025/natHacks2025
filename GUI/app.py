@@ -40,7 +40,7 @@ def stream_eeg_data():
 
             if data.shape[1] > 0:
                 eeg_values = [data[ch, :].tolist() for ch in eeg_channels]
-                print(eegtest)
+                print(eeg_values)
                 socketio.emit('eeg_update', {'values': eeg_values})
             socketio.sleep(0.2)
 
@@ -56,7 +56,7 @@ def on_connect():
     print("Client connected")
 
 if __name__ == '__main__':
-    # thread = threading.Thread(target=stream_eeg_data, daemon=True)
-    # thread.start()
-    socketio.start_background_task(target=stream_eeg_data)
+    thread = threading.Thread(target=stream_eeg_data, daemon=True)
+    thread.start()
+    # socketio.start_background_task(target=stream_eeg_data)
     socketio.run(app, host='0.0.0.0', port=5000, debug=True)
