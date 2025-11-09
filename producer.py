@@ -1,4 +1,4 @@
-# REPLACE their producer function with this:
+# REPLACE producer function with this:
 
 def producer(board, bci_system):
     """
