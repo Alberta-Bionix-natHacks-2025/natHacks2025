@@ -16,7 +16,7 @@ def index():
 
 def stream_eeg_data():
     """Continuously emit EEG values to the web client."""
-    serial_port = '/dev/tty.usbmodemXXXX'   # ← change this for your system
+    serial_port = '/dev/cu.usbmodem11'   # ← change this for your system
     params = BrainFlowInputParams()
     params.serial_port = serial_port
     board_id = BoardIds.GANGLION_BOARD.value
@@ -30,14 +30,20 @@ def stream_eeg_data():
 
         eeg_channels = BoardShim.get_eeg_channels(board_id)
         sampling_rate = BoardShim.get_sampling_rate(board_id)
+        time.sleep(3)
+
+        temp = board.get_current_board_data(sampling_rate)
+        eegtest = temp[eeg_channels[0], :].tolist()
 
         while streaming:
             data = board.get_current_board_data(sampling_rate)
+
             if data.shape[1] > 0:
                 # Example: send first EEG channel only
                 eeg = data[eeg_channels[0], :].tolist()
+                print(eegtest)
                 socketio.emit('eeg_update', {'values': eeg})
-            time.sleep(0.2)
+            socketio.sleep(0.2)
 
     except Exception as e:
         print("Error:", e)
@@ -51,6 +57,7 @@ def on_connect():
     print("Client connected")
 
 if __name__ == '__main__':
-    thread = threading.Thread(target=stream_eeg_data, daemon=True)
-    thread.start()
+    # thread = threading.Thread(target=stream_eeg_data, daemon=True)
+    # thread.start()
+    socketio.start_background_task(target=stream_eeg_data)
     socketio.run(app, host='0.0.0.0', port=5000, debug=True)
