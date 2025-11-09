@@ -5,6 +5,9 @@ import queue
 from brainflow.board_shim import BoardShim, BrainFlowInputParams, BoardIds
 from brainflow.data_filter import DataFilter, FilterTypes
 
+from csp import CSP
+from spectral_feature_extractor import SpectralFeatureExtractor
+
 window_size = 40
 data_queue = queue.Queue(maxsize=10)
 
@@ -25,27 +28,38 @@ def realtime_ganglion_stream():
     return board
 
 def producer(board):
+    # Load a fitted CSP object
+
+    spectralFeatureExtractor = SpectralFeatureExtractor(sampling_rate=200)
+    
     while True:
-        
+        time.sleep(1)
+
         data = board.get_current_board_data(window_size)
         
-        #Get eeg channels
+        # Get EEG Channels
         eeg_channels = BoardShim.get_eeg_channels(board.get_board_id())
         sampling_rate = board.get_sampling_rate(BoardIds.GANGLION_BOARD.value)
         
-        #Filter out noise & bandpass.
-        
-        
-        # Feature Abs.
-        
-        
-        
-        #model value
 
-
+        # Filter out noise & bandpass.
         for ch in eeg_channels:
             DataFilter.perform_bandpass(data[ch], sampling_rate, 1.0, 50.0, 2, FilterTypes.BUTTERWORTH.value, 0)
-            # DataFilter.perform_bandstop(data[ch], sampling_rate, 60.0, 2.0, 2, FilterTypes.BUTTERWORTH.value, 0)
+            DataFilter.remove_environmental_noise(data[ch], sampling_rate, 0)
+        
+        # Convert to Epoch Shape (For OpenBCI)
+        data = np.array([data[1:5]])
+
+        # Feature Extraction
+        # Need to load an already fitted CSP
+        features = spectralFeatureExtractor.extract_features(data)
+        asymmetry = spectralFeatureExtractor.extract_asymmetry(data, channel_pairs=[(0,1 ), (2, 3)])
+
+        # Create feature Matrix
+
+        # Pass to model
+        # Need to load model from pickle
+
 
         try:
             data_queue.put_nowait(data)
@@ -64,9 +78,9 @@ def consumer():
 
         # Show on GUI?
         
-        print(status)
+        # print(status)
 
-        print(f"Processing took {time.time() - start:.3f} s")
+        # print(f"Processing took {time.time() - start:.3f} s")
 
 
 if __name__ == "__main__":

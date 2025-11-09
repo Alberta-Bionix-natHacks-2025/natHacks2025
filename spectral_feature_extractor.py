@@ -1,7 +1,7 @@
 '''How much electrical activity exists in specific frequency ranges'''
 import numpy as np
 from scipy import signal
-from scipy.integrate import simps
+from scipy.integrate import simpson as simps
 
 class SpectralFeatureExtractor:
     """Extract power spectral density features from EEG"""
