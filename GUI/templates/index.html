@@ -7,57 +7,115 @@
 
   <!-- Socket.IO -->
   <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
-  <!-- Plotly -->
-  <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+  <!-- Latest Plotly -->
+  <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
 
   <style>
     body {
       font-family: Arial, sans-serif;
       margin: 0;
-      padding: 10px;
+      padding: 20px;
       background: #121212;
       color: #fff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      height: 100vh;
+      box-sizing: border-box;
     }
-    h2 {
+
+    .logo-container {
+      width: 100%;
       text-align: center;
-      margin-bottom: 10px;
+      margin-bottom: 20px;
     }
-    .chart-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+
+    .logo {
+      width: 250px;
+      max-width: 80%;
+    }
+
+    /* Main grid: left (plots) and right (image + text) */
+    .content {
+      display: flex;
+      flex-direction: row;
+      justify-content: space-between;
+      width: 100%;
+      height: 80%;
+      max-width: 1400px;
+    }
+
+    .charts-container {
+      display: flex;
+      flex-direction: column;
+      width: 60%;
       gap: 20px;
-      justify-items: center;
     }
+
     .chart {
       width: 100%;
-      height: 250px;
+      height: 200px;
       background: #1e1e1e;
       border-radius: 10px;
       padding: 10px;
     }
+
+    .right-panel {
+      width: 30%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+    }
+
+    #direction-img {
+      width: 100%;
+      border-radius: 10px;
+      background: #1e1e1e;
+      object-fit: contain;
+    }
+
+    #direction-text {
+      font-size: 2rem;
+      font-weight: bold;
+      color: #00e676;
+      text-align: center;
+    }
   </style>
 </head>
 <body>
-  <h2>Real-Time OpenBCI Ganglion EEG</h2>
+  <div class="logo-container">
+    <img src="assets/logo-white.png" class="logo" alt="Logo">
+  </div>
 
-  <div class="chart-grid">
-    <div id="ch0" class="chart"></div>
-    <div id="ch1" class="chart"></div>
-    <div id="ch2" class="chart"></div>
-    <div id="ch3" class="chart"></div>
+  <div class="content">
+    <!-- LEFT SIDE: EEG GRAPHS -->
+    <div class="charts-container">
+      <div id="ch0" class="chart"></div>
+      <div id="ch1" class="chart"></div>
+      <div id="ch2" class="chart"></div>
+      <div id="ch3" class="chart"></div>
+    </div>
+
+    <!-- RIGHT SIDE: IMAGE + TEXT -->
+    <div class="right-panel">
+      <img id="direction-img" src="assets/neutral.png" alt="Direction" />
+      <div id="direction-text">NEUTRAL</div>
+    </div>
   </div>
 
   <script>
     const socket = io();
 
-    // Initialize 4 empty plots
+    // Initialize EEG plots
     const channels = [0, 1, 2, 3];
-    const maxPoints = 1000; // visible window length
+    const maxPoints = 1000;
 
     channels.forEach(ch => {
       Plotly.newPlot(`ch${ch}`, [{
         y: [],
-        type: 'line',
+        type: 'scatter',
         mode: 'lines',
         line: { color: '#00e676' }
       }], {
@@ -70,16 +128,36 @@
       });
     });
 
-    // Update plots when new data arrives
+    // Update EEG data
     socket.on('eeg_update', data => {
-      const values = data.values; // list of lists: 4 channels
+      const values = data.values;
       if (!values || !values.length) return;
-    
+
       values.forEach((channelData, ch) => {
         Plotly.extendTraces(`ch${ch}`, { y: [channelData] }, [0], maxPoints);
       });
     });
-    
+
+    // Update direction image + text
+    socket.on('direction_update', data => {
+      const direction = data.direction?.toUpperCase() || "NEUTRAL";
+      const img = document.getElementById('direction-img');
+      const text = document.getElementById('direction-text');
+
+      if (direction === "LEFT") {
+        img.src = "assets/left.png";
+        text.textContent = "LEFT";
+        text.style.color = "#00b0ff";
+      } else if (direction === "RIGHT") {
+        img.src = "assets/right.png";
+        text.textContent = "RIGHT";
+        text.style.color = "#ff4081";
+      } else {  
+        img.src = "assets/neutral.png";
+        text.textContent = "NEUTRAL";
+        text.style.color = "#00e676";
+      }
+    });
   </script>
 </body>
 </html>
