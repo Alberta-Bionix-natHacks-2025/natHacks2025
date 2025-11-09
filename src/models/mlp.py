@@ -1,45 +1,49 @@
+# src/models/mlp.py
 import torch
 import torch.nn as nn
-
+from typing import Iterable, Union
 
 class EEGFeatureMLP(nn.Module):
     """
-    MLP classifier for EEG feature vectors.
-    Input: feature vector (batch_size, feature_dim)
-    Output: logits (batch_size, n_classes)
+    Flexible MLP for EEG feature vectors.
+    Accepts either:
+      - hidden_dim=<int> (two layers of the same size), or
+      - hidden_dims=[h1, h2, ...] / tuple / int
     """
-
-    def __init__(self, input_dim, hidden_dim=64, n_classes=2, dropout=0.2):
+    def __init__(
+        self,
+        input_dim: int,
+        n_classes: int = 2,
+        hidden_dim: int = 64,                 # kept for backward-compat
+        hidden_dims: Union[int, Iterable[int]] = None,  # new flexible arg
+        dropout: float = 0.2,
+        use_batchnorm: bool = True,
+    ):
         super().__init__()
 
-        self.net = nn.Sequential(
-            nn.Linear(input_dim, hidden_dim),
-            nn.BatchNorm1d(hidden_dim),
-            nn.ReLU(),
-            nn.Dropout(dropout),
+        # Normalize hidden_dims
+        if hidden_dims is None:
+            # fall back to 2 layers of hidden_dim (your previous default)
+            hidden_dims = [hidden_dim, hidden_dim]
+        elif isinstance(hidden_dims, int):
+            hidden_dims = [hidden_dims]       # single hidden layer
 
-            nn.Linear(hidden_dim, hidden_dim),
-            nn.BatchNorm1d(hidden_dim),
-            nn.ReLU(),
-            nn.Dropout(dropout),
+        dims = [int(input_dim)] + [int(h) for h in hidden_dims] + [int(n_classes)]
 
-            nn.Linear(hidden_dim, n_classes)
-        )
+        layers = []
+        for i in range(len(dims) - 2):
+            layers.append(nn.Linear(dims[i], dims[i + 1]))
+            if use_batchnorm:
+                layers.append(nn.BatchNorm1d(dims[i + 1]))
+            layers.append(nn.ReLU())
+            layers.append(nn.Dropout(dropout))
+        layers.append(nn.Linear(dims[-2], dims[-1]))
 
-    def forward(self, x):
-        """
-        x: Tensor of shape (batch_size, input_dim)
-        """
+        self.net = nn.Sequential(*layers)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         return self.net(x)
 
-
-# run a quick internal test when executed directly
-if __name__ == "__main__":
-    model = EEGFeatureMLP(input_dim=14, hidden_dim=64, n_classes=2)
-
-    dummy_input = torch.randn(5, 14)  # 5 samples, 14-dim feature vector
-    output = model(dummy_input)
-
-    print("Input shape: ", dummy_input.shape)
-    print("Output shape:", output.shape)
-    print("Output:", output)
+# Backwards-friendly alias
+MLP = EEGFeatureMLP
+__all__ = ["EEGFeatureMLP", "MLP"]
