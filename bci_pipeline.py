@@ -219,7 +219,7 @@ print("="*60)
 print("\nStep 1: Loading data from multiple subjects...")
 
 # Subject 1, Runs 3 (Left/Right Hand) and 7 (Left/Right Hand) and 11 
-subject_ids = [1, 2, 3]  # Use 3 subjects
+subject_ids = [1, 2, 3, 4, 5]  # Use 3 subjects
 runs = [3, 7, 11]  # Motor imagery runs (left/right hand)
 
 all_raws = []
@@ -264,7 +264,7 @@ events, event_id_all = mne.events_from_annotations(raw, verbose=False)
 # T1: Left Hand Motor Imagery, T2: Right Hand Motor Imagery
 event_id_binary = {'T1': 1, 'T2': 2} 
 
-# Create epochs: tmin=-0.2s to tmax=0.5s relative to the event (cue)
+# Create epochs: tmin=-1.0s to tmax=4.0s relative to the event (cue)
 epoch_creator = EpochCreator(tmin=-1.0, tmax=4.0, baseline=(-1.0, 0.0))
 epochs = epoch_creator.create_epochs(raw, events, event_id_binary)
 
