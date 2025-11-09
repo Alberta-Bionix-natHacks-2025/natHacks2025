@@ -1,11 +1,11 @@
 {
-  "sampling_rate_hz": 250,
+  "sampling_rate_hz": 200,
   "bandpass_hz": [
     8,
     30
   ],
   "window_seconds": 2.0,
-  "window_samples": 500,
+  "window_samples": 400,
   "n_channels_expected": 4,
   "channel_order_train": [
     "C4",
@@ -40,7 +40,7 @@
       64,
       64
     ],
-    "dropout": 0.2,
+    "dropout": 0.3,
     "n_classes": 2,
     "class_map": {
       "0": "left",
@@ -49,5 +49,5 @@
     "weights_path": "data/weights/feature_mlp_4ch.pth"
   },
   "pipeline_path": "data/weights/feature_pipeline_4ch.joblib",
-  "notes": "4-ch MI proxies C4,FC2,FC1,C3 (runtime C4,Fp2,Fp1,C3)"
+  "notes": "4-ch MI proxies C4,FC2,FC1,C3 (runtime C4,Fp2,Fp1,C3) \u2014 trained at 200 Hz."
 }
