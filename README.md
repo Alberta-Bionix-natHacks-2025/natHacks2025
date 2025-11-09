@@ -25,7 +25,7 @@ links, credits).
    > Powers the web-based interface, connecting the machine learning model to the user-facing GUI.
 
 ## Materials
-[Slides](https://docs.google.com/presentation/d/1h2WjvpodQrcb_n5vvOtkd0tqTo_iaAlo-Vs2vEI9-z0/edit?usp=sharing) \
-[Training Dataset](https://physionet.org/content/eegmmidb/1.0.0/) 
+[Presentation slides](https://docs.google.com/presentation/d/1h2WjvpodQrcb_n5vvOtkd0tqTo_iaAlo-Vs2vEI9-z0/edit?usp=sharing) \
+[Training dataset](https://physionet.org/content/eegmmidb/1.0.0/) 
 
 ## Credits
