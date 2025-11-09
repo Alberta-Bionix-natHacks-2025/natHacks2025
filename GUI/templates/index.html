@@ -41,7 +41,7 @@
       flex-direction: row;
       justify-content: space-between;
       width: 100%;
-      height: 80%;
+      height: 90%;
       max-width: 1400px;
     }
 
@@ -86,7 +86,7 @@
 </head>
 <body>
   <div class="logo-container">
-    <img src="assets/logo-white.png" class="logo" alt="Logo">
+    <img src="{{ url_for('static', filename='logo-white.png') }}" class="logo" alt="Logo">
   </div>
 
   <div class="content">
@@ -100,7 +100,7 @@
 
     <!-- RIGHT SIDE: IMAGE + TEXT -->
     <div class="right-panel">
-      <img id="direction-img" src="assets/neutral.png" alt="Direction" />
+      <img id="direction-img" src="{{ url_for('static', filename='neutral.png') }}" alt="Direction" />
       <div id="direction-text">NEUTRAL</div>
     </div>
   </div>
@@ -124,7 +124,7 @@
         paper_bgcolor: '#1e1e1e',
         plot_bgcolor: '#1e1e1e',
         font: { color: '#fff' },
-        yaxis: { range: [-200, 200] }
+        yaxis: { range: [-10000, 10000] }
       });
     });
 
