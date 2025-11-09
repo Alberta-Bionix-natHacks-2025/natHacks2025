@@ -14,7 +14,7 @@ def realtime_ganglion_stream():
     # On Windows it's usually COM#, on Linux it's /dev/ttyUSB# or similar
     # On macOS it's usually /dev/tty.usbmodem# or similar
     
-    serial_port = '/dev/cu.usbmodem11' # CHANGE THIS
+    serial_port = 'COM8' # CHANGE THIS
     
     params = BrainFlowInputParams()
     params.serial_port = serial_port
@@ -27,6 +27,11 @@ def realtime_ganglion_stream():
 def producer(board):
     while True:
         data = board.get_current_board_data(window_size)
+
+        #filtering example: bandpass 1-50 Hz
+        DataFilter.perform_bandpass(data, board.get_sampling_rate(), 1.0, 50.0, 2, FilterTypes.BUTTERWORTH.value, 0)
+
+
         try:
             data_queue.put_nowait(data)
         except queue.Full:
@@ -53,3 +58,11 @@ if __name__ == "__main__":
     # Run threads separately
     threading.Thread(target=producer, daemon=True, args=(board,)).start()
     threading.Thread(target=consumer, daemon=True).start()
+
+    try:
+        while True:
+            time.sleep(1)
+    except KeyboardInterrupt:
+        print("Stopping...")
+        board.stop_stream()
+        board.release_session()
