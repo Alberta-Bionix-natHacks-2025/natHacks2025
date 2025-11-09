@@ -1,0 +1,53 @@
+{
+  "sampling_rate_hz": 250,
+  "bandpass_hz": [
+    8,
+    30
+  ],
+  "window_seconds": 2.0,
+  "window_samples": 500,
+  "n_channels_expected": 4,
+  "channel_order_train": [
+    "C4",
+    "FC2",
+    "FC1",
+    "C3"
+  ],
+  "channel_order_runtime": [
+    "C4",
+    "Fp2",
+    "Fp1",
+    "C3"
+  ],
+  "features": {
+    "csp_components": 2,
+    "bands": {
+      "mu": [
+        8,
+        12
+      ],
+      "beta": [
+        13,
+        30
+      ]
+    },
+    "feature_dim": 26,
+    "scaler": "StandardScaler"
+  },
+  "model": {
+    "arch": "EEGFeatureMLP",
+    "hidden_dims": [
+      64,
+      64
+    ],
+    "dropout": 0.2,
+    "n_classes": 2,
+    "class_map": {
+      "0": "left",
+      "1": "right"
+    },
+    "weights_path": "data/weights/feature_mlp_4ch.pth"
+  },
+  "pipeline_path": "data/weights/feature_pipeline_4ch.joblib",
+  "notes": "4-ch MI proxies C4,FC2,FC1,C3 (runtime C4,Fp2,Fp1,C3)"
+}

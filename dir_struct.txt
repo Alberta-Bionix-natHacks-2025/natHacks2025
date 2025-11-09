@@ -1,0 +1,40 @@
+NATHACKS2025/
+│
+├── train_colab.ipynb              # your main training notebook (runs in Colab)
+├── realtime_inference.py          # local script for real-time demo (OpenBCI/BrainFlow)
+│
+├── requirements.txt               # pip install dependencies (PyTorch, Braindecode, etc.)
+├── README.md                      # project overview + setup instructions
+│
+├── src/                           # main source code (keeps logic modular)
+│   ├── __init__.py
+│   │
+│   ├── feature_extraction/
+│   │   ├── __init__.py
+│   │   ├── spectral_features.py   # your SpectralFeatureExtractor
+│   │   ├── csp.py                 # your CSP class
+│   │   └── temporal_features.py   # (optional: Hjorth, variance, entropy)
+│   │
+│   ├── models/
+│   │   ├── __init__.py
+│   │   ├── mlp.py                 # EEGNet model definition
+│   │   ├── eeg_inception.py       # (optional)
+│   │   └── conv_lora.py           # LoRA fine-tuning module
+│   │
+│   ├── utils/
+│   │   ├── __init__.py
+│   │   ├── data_loader.py         # BNCI/OpenBCI loading functions
+│   │   ├── augmentations.py       # mixup, noise, channel dropout
+│   │   ├── training_loop.py       # train + validation logic
+│   │   ├── metrics.py             # accuracy, F1, confusion matrix
+│   │   └── viz.py                 # plots, PSD visualization, etc.
+│
+├── data/                          # local or mounted storage path
+│   ├── raw/                       # BNCI or OpenBCI raw EEG
+│   ├── processed/                 # preprocessed numpy arrays
+│   └── weights/                   # trained model weights (.pth)
+│
+└── notebooks/                     # optional scratch notebooks
+    ├── feature_testing.ipynb
+    ├── model_eval.ipynb
+    └── demo_realtime.ipynb
