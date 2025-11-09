@@ -1,138 +1,174 @@
+# src/training/feature_pipeline.py
 import numpy as np
 from sklearn.preprocessing import StandardScaler
+from scipy.signal import butter, filtfilt
 
 try:
-    import joblib  # for saving/loading
-except Exception as e:
+    import joblib
+except Exception:
     joblib = None
 
 from src.feature_extraction.csp import CSP
 from src.feature_extraction.spectral_features import SpectralFeatureExtractor
 
 
+def _bp_filter(X, fs, f_lo, f_hi, order=4):
+    """Zero-phase IIR bandpass per channel, axis=-1. X: (N,C,T)."""
+    b, a = butter(order, [f_lo/(fs/2), f_hi/(fs/2)], btype="bandpass")
+    Xf = filtfilt(b, a, X, axis=-1)
+    return Xf.astype(np.float32)
+
+
 class FeaturePipeline:
     """
-    Train+serve feature pipeline:
-      - CSP(n_components)
-      - PSD (mu + beta)
-      - Asymmetry (mu & beta for provided channel_pairs)
+    Features from raw windows X (N, C, T):
+      - CSP (log-var) with shrinkage
+      - optional FBCSP over fb_bands (CSP per band, concat)
+      - PSD features (mu + beta per channel)
+      - Asymmetry features (mu & beta for 'asym_pairs')
       - StandardScaler
 
-    Usage:
-        fp = FeaturePipeline(fs=250, n_csp=4, channel_pairs=[(0,1)])
-        X_train_feat = fp.fit_transform(X_train_raw, y_train)
-        X_val_feat   = fp.transform(X_val_raw)
-        fp.save("data/weights/feature_pipeline.joblib")
-        # later:
-        fp = FeaturePipeline.load("data/weights/feature_pipeline.joblib")
-        X_rt_feat = fp.transform(X_window[np.newaxis, ...])  # (1, C, T)
+    4-ch order assumed: [C4, FC2, FC1, C3]
+      -> default asym_pairs=((3,0),) == (C3, C4)
+
+    Backward-compatible kwargs accepted: sampling_rate, csp_components,
+    mu_band/beta_band, channel_pairs/channel_names.
     """
 
     def __init__(
         self,
-        fs: int = 250,
-        n_csp: int = 4,
-        mu_band=(8, 12),
-        beta_band=(13, 30),
-        channel_pairs=None,  # e.g., [(C3_idx, C4_idx)]
+        fs=None, sampling_rate=None,
+        n_csp=None, csp_components=None,
+        bands=None, mu_band=None, beta_band=None,
+        asym_pairs=None, channel_pairs=None,
+        channel_names=None,
+        use_fbcsp=False, fb_bands=((8,12), (12,16), (16,26)),
+        shrinkage="lw",
+        **kwargs,
     ):
-        self.fs = fs
-        self.n_csp = n_csp
-        self.mu_band = mu_band
-        self.beta_band = beta_band
-        self.channel_pairs = channel_pairs if channel_pairs is not None else [(0, 1)]
+        # fs
+        if fs is None and sampling_rate is None: fs = 250
+        self.fs = fs if fs is not None else sampling_rate
 
-        self.csp = CSP(n_components=n_csp)
+        # CSP comps
+        if n_csp is None: n_csp = csp_components if csp_components is not None else 2
+        self.n_csp = int(n_csp)
+
+        # bands
+        if bands is not None:
+            self.bands = tuple(bands)
+            self.mu_band = tuple(self.bands[0]) if len(self.bands) > 0 else (8,12)
+            self.beta_band = tuple(self.bands[1]) if len(self.bands) > 1 else (13,30)
+        else:
+            self.mu_band = tuple(mu_band) if mu_band is not None else (8,12)
+            self.beta_band = tuple(beta_band) if beta_band is not None else (13,30)
+            self.bands = (self.mu_band, self.beta_band)
+
+        # asymmetry
+        if asym_pairs is not None:
+            self.asym_pairs = tuple(tuple(p) for p in asym_pairs)
+        elif channel_pairs is not None:
+            self.asym_pairs = tuple(tuple(p) for p in channel_pairs)
+        else:
+            # focus on motor pair only (C3 vs C4) for 4-ch order [C4, FC2, FC1, C3]
+            self.asym_pairs = ((3, 0),)
+
+        self.channel_names = tuple(channel_names) if channel_names is not None else None
+        self.use_fbcsp = bool(use_fbcsp)
+        self.fb_bands = tuple(tuple(b) for b in fb_bands)
+        self.shrinkage = shrinkage
+
+        # blocks
+        self.csp = CSP(n_components=self.n_csp, shrinkage=self.shrinkage)
         self.spec = SpectralFeatureExtractor(
-            sampling_rate=fs, mu_band=mu_band, beta_band=beta_band
+            sampling_rate=self.fs, mu_band=self.mu_band, beta_band=self.beta_band
         )
         self.scaler = StandardScaler()
 
         self._fitted = False
         self._feature_dim = None
 
-    def _concat_features(self, X_raw, use_csp_transform_only=False):
-        """
-        Build feature matrix from raw windows X_raw: (N, C, T)
-        If use_csp_transform_only=True, assumes CSP is already fitted and uses transform().
-        """
-        if use_csp_transform_only:
-            csp_feat = self.csp.transform(X_raw)
-        else:
-            # during fit we call fit_transform
-            csp_feat = self.csp.fit_transform(X_raw, self._fit_labels)
+    # ---------- internals ----------
+    def _csp_block(self, X, y=None):
+        return self.csp.fit_transform(X, y) if y is not None else self.csp.transform(X)
 
-        psd_feat = self.spec.extract_features(X_raw)                       # (N, 2*C)
-        asym_feat = self.spec.extract_asymmetry(X_raw, self.channel_pairs) # (N, 2*len(pairs))
+    def _fbcsp_block(self, X, y=None):
+        """CSP per sub-band, concat horizontally."""
+        feats = []
+        for (lo, hi) in self.fb_bands:
+            Xb = _bp_filter(X, self.fs, lo, hi)
+            if y is not None:
+                feats.append(self.csp.__class__(n_components=self.n_csp, shrinkage=self.shrinkage).fit_transform(Xb, y))
+            else:
+                # Use main CSP if already fitted on fullband; for strictness, you can refit per band earlier.
+                feats.append(self.csp.transform(Xb))
+        return np.concatenate(feats, axis=1) if feats else np.zeros((X.shape[0], 0), dtype=np.float32)
 
-        X_feat = np.concatenate([csp_feat, psd_feat, asym_feat], axis=1)
-        return X_feat
+    def _build_feats(self, X, y=None):
+        # Base CSP on full band
+        csp_feat = self._csp_block(X, y=y)
 
-    def fit(self, X_raw: np.ndarray, y: np.ndarray):
-        """
-        Fit CSP (needs labels) + scaler on concatenated feature vectors.
-        Returns fitted self; call transform() to get features.
-        """
-        self._fit_labels = y  # store just for csp.fit_transform
-        X_feat = self._concat_features(X_raw, use_csp_transform_only=False)
+        # Optional FBCSP (adds small extra CSP features)
+        fbcsp_feat = self._fbcsp_block(X, y=y) if self.use_fbcsp else np.zeros((X.shape[0], 0), dtype=np.float32)
 
-        self.scaler.fit(X_feat)
-        self._feature_dim = X_feat.shape[1]
+        # PSD mu+beta per channel
+        psd_feat = self.spec.extract_features(X)  # (N, 2*C)
+
+        # Asymmetry (mu & beta per pair)
+        asym_feat = self.spec.extract_asymmetry(X, channel_pairs=self.asym_pairs)
+
+        feats = np.concatenate([csp_feat, fbcsp_feat, psd_feat, asym_feat], axis=1)
+        return feats.astype(np.float32)
+
+    # ---------- API ----------
+    def fit_transform(self, X, y):
+        feats = self._build_feats(X, y=y)
+        feats = self.scaler.fit_transform(feats)
         self._fitted = True
-        # clean temp
-        del self._fit_labels
+        self._feature_dim = feats.shape[1]
+        return feats
+
+    def fit(self, X, y):
+        _ = self.fit_transform(X, y)
         return self
 
-    def fit_transform(self, X_raw: np.ndarray, y: np.ndarray):
-        self.fit(X_raw, y)
-        return self.transform(X_raw)
-
-    def transform(self, X_raw: np.ndarray):
-        """
-        Transform raw windows with fitted CSP + PSD + Asym + Scaler.
-        """
+    def transform(self, X):
         if not self._fitted:
-            raise RuntimeError("FeaturePipeline must be fitted before transform()")
-        X_feat = self._concat_features(X_raw, use_csp_transform_only=True)
-        X_scaled = self.scaler.transform(X_feat)
-        return X_scaled
+            raise RuntimeError("FeaturePipeline must be fitted before transform().")
+        feats = self._build_feats(X, y=None)
+        feats = self.scaler.transform(feats)
+        return feats
 
     @property
-    def feature_dim(self):
-        return self._feature_dim
+    def feature_dim(self): return self._feature_dim
 
+    # ---------- persistence ----------
     def save(self, path: str):
-        if joblib is None:
-            raise RuntimeError("joblib is not available to save the pipeline.")
-        obj = {
-            "fs": self.fs,
-            "n_csp": self.n_csp,
-            "mu_band": self.mu_band,
-            "beta_band": self.beta_band,
-            "channel_pairs": self.channel_pairs,
-            "csp": self.csp,
-            "spec": self.spec,
-            "scaler": self.scaler,
-            "_fitted": self._fitted,
-            "_feature_dim": self._feature_dim,
-        }
+        if joblib is None: raise RuntimeError("joblib is not available.")
+        obj = dict(
+            fs=self.fs, n_csp=self.n_csp, bands=self.bands,
+            mu_band=self.mu_band, beta_band=self.beta_band,
+            asym_pairs=self.asym_pairs, channel_names=self.channel_names,
+            use_fbcsp=self.use_fbcsp, fb_bands=self.fb_bands, shrinkage=self.shrinkage,
+            csp=self.csp, spec=self.spec, scaler=self.scaler,
+            _fitted=self._fitted, _feature_dim=self._feature_dim,
+        )
         joblib.dump(obj, path)
 
     @classmethod
     def load(cls, path: str):
-        if joblib is None:
-            raise RuntimeError("joblib is not available to load the pipeline.")
+        if joblib is None: raise RuntimeError("joblib is not available.")
         obj = joblib.load(path)
         fp = cls(
-            fs=obj["fs"],
-            n_csp=obj["n_csp"],
-            mu_band=obj["mu_band"],
-            beta_band=obj["beta_band"],
-            channel_pairs=obj["channel_pairs"],
+            fs=obj.get("fs", 250),
+            n_csp=obj.get("n_csp", 2),
+            bands=obj.get("bands", ((8,12),(13,30))),
+            asym_pairs=obj.get("asym_pairs", ((3,0),)),
+            channel_names=obj.get("channel_names", None),
+            use_fbcsp=obj.get("use_fbcsp", False),
+            fb_bands=obj.get("fb_bands", ((8,12),(12,16),(16,26))),
+            shrinkage=obj.get("shrinkage", "lw"),
         )
-        fp.csp = obj["csp"]
-        fp.spec = obj["spec"]
-        fp.scaler = obj["scaler"]
-        fp._fitted = obj["_fitted"]
-        fp._feature_dim = obj["_feature_dim"]
+        fp.csp = obj["csp"]; fp.spec = obj["spec"]; fp.scaler = obj["scaler"]
+        fp._fitted = obj.get("_fitted", True); fp._feature_dim = obj.get("_feature_dim", None)
         return fp

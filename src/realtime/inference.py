@@ -1,51 +1,84 @@
-import numpy as np
-import torch
-import torch.nn as nn
-
-try:
-    import joblib
-except Exception:
-    joblib = None
-
-from src.models.mlp import EEGFeatureMLP
+# src/realtime/csv_adapter.py
+import json, time, collections, numpy as np
+from pathlib import Path
+from typing import List, Dict, Optional
+from .inference import RealTimeClassifier
 from src.pipeline.feature_pipeline import FeaturePipeline
 
+class SlidingBuffer:
+    def __init__(self, n_ch: int, win_samples: int):
+        self.n_ch = n_ch
+        self.win = win_samples
+        self.buf = np.zeros((n_ch, 0), dtype=np.float32)
 
-class RealTimeClassifier:
+    def push(self, frame: np.ndarray):
+        """frame: (n_ch,) or (n_ch, n_samples)"""
+        if frame.ndim == 1:
+            frame = frame.reshape(self.n_ch, 1)
+        self.buf = np.concatenate([self.buf, frame], axis=1)
+        if self.buf.shape[1] > self.win:
+            self.buf = self.buf[:, -self.win:]
+
+    def ready(self) -> bool:
+        return self.buf.shape[1] == self.win
+
+    def window(self) -> np.ndarray:
+        assert self.ready()
+        return self.buf.copy()
+
+def load_runtime_config(path: str) -> dict:
+    with open(path, "r") as f:
+        return json.load(f)
+
+def build_classifier_from_config(cfg_path: str, device: str = "cpu") -> RealTimeClassifier:
+    cfg = load_runtime_config(cfg_path)
+
+    fp = FeaturePipeline.load(cfg["pipeline_path"])
+    rtc = RealTimeClassifier(
+        pipeline_path=cfg["pipeline_path"],
+        weights_path=cfg["model"]["weights_path"],
+        input_dim=fp.feature_dim,
+        n_classes=cfg["model"]["n_classes"],
+        device=device,
+    )
+    rtc.class_map = {int(k): v for k, v in cfg["model"]["class_map"].items()}
+    rtc.expected_order = cfg["channel_order"]  # ["C4","Fp2","Fp1","C3"]
+    rtc.fs = cfg["sampling_rate_hz"]
+    rtc.win_samples = cfg["window_samples"]
+    return rtc
+
+def predict_from_csv_rows(
+    rtc: RealTimeClassifier,
+    rows: List[Dict[str, float]],
+    column_map: Dict[str, str],  # maps csv column -> channel name (e.g., "EXG Channel 0" -> "C4")
+) -> List[Dict]:
     """
-    Load a trained MLP + FeaturePipeline and run predictions on incoming windows.
-
-    Expected window shape: (C, T) or (N, C, T)
+    rows: each row is a dict like {"EXG Channel 0": v0, "EXG Channel 1": v1, ...}
+    column_map: how CSV columns map to e.g. C4, Fp2, Fp1, C3
     """
+    order = rtc.expected_order
+    win = rtc.win_samples
+    buf = SlidingBuffer(n_ch=len(order), win_samples=win)
 
-    def __init__(self, pipeline_path: str, weights_path: str, input_dim: int, n_classes: int, device: str = None):
-        if device is None:
-            device = "cuda" if torch.cuda.is_available() else "cpu"
-        self.device = torch.device(device)
+    outputs = []
+    for r in rows:
+        # 1) map to expected channel order
+        frame = np.array([r[k] for k in column_map.keys()], dtype=np.float32)
+        # reorder to expected_order using column_map values
+        name_by_col = {col: ch for col, ch in column_map.items()}
+        frame_by_name = {name_by_col[col]: r[col] for col in column_map.keys()}
+        frame_ord = np.array([frame_by_name[ch] for ch in order], dtype=np.float32)
 
-        # load pipeline
-        self.pipeline: FeaturePipeline = FeaturePipeline.load(pipeline_path)
+        buf.push(frame_ord)
 
-        # build model and load weights
-        self.model = EEGFeatureMLP(input_dim=input_dim, hidden_dim=64, n_classes=n_classes).to(self.device)
-        self.model.load_state_dict(torch.load(weights_path, map_location=self.device))
-        self.model.eval()
-
-    def predict_proba(self, X_window: np.ndarray) -> np.ndarray:
-        """
-        X_window: (C, T) or (N, C, T)
-        Returns probs: (N, n_classes)
-        """
-        if X_window.ndim == 2:
-            X_window = X_window[np.newaxis, ...]  # (1, C, T)
-
-        # feature transform
-        X_feat = self.pipeline.transform(X_window)  # (N, D)
-        with torch.no_grad():
-            logits = self.model(torch.tensor(X_feat, dtype=torch.float32, device=self.device))
-            probs = torch.softmax(logits, dim=1).cpu().numpy()
-        return probs
-
-    def predict(self, X_window: np.ndarray) -> np.ndarray:
-        probs = self.predict_proba(X_window)
-        return probs.argmax(axis=1)
+        if buf.ready():
+            x = buf.window()  # (n_ch, win_samples)
+            probs = rtc.predict_proba(x)
+            pred  = rtc.predict(x)
+            outputs.append({
+                "pred": int(pred[0]),
+                "label": rtc.class_map.get(int(pred[0]), str(int(pred[0]))),
+                "probs": probs[0].tolist(),
+                "t": len(outputs)
+            })
+    return outputs

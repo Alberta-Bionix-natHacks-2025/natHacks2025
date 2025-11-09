@@ -6,9 +6,21 @@
   ],
   "window_seconds": 2.0,
   "window_samples": 500,
-  "n_channels_expected": 22,
+  "n_channels_expected": 4,
+  "channel_order_train": [
+    "C4",
+    "FC2",
+    "FC1",
+    "C3"
+  ],
+  "channel_order_runtime": [
+    "C4",
+    "Fp2",
+    "Fp1",
+    "C3"
+  ],
   "features": {
-    "csp_components": 4,
+    "csp_components": 2,
     "bands": {
       "mu": [
         8,
@@ -19,7 +31,7 @@
         30
       ]
     },
-    "feature_dim": 50,
+    "feature_dim": 26,
     "scaler": "StandardScaler"
   },
   "model": {
@@ -34,8 +46,8 @@
       "0": "left",
       "1": "right"
     },
-    "weights_path": "D:\\Projects\\Club\\Bionix\\natHacks\\natHacks2025\\data\\weights\\feature_mlp_pipeline.pth"
+    "weights_path": "data/weights/feature_mlp_4ch.pth"
   },
-  "pipeline_path": "D:\\Projects\\Club\\Bionix\\natHacks\\natHacks2025\\data\\weights\\feature_pipeline.joblib",
-  "notes": "Feed a (22,500) float32 window (8\u201330 Hz bandpassed @250Hz) \u2192 pipeline \u2192 MLP."
+  "pipeline_path": "data/weights/feature_pipeline_4ch.joblib",
+  "notes": "4-ch MI proxies C4,FC2,FC1,C3 (runtime C4,Fp2,Fp1,C3)"
 }
