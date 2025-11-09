@@ -17,7 +17,7 @@ NATHACKS2025/
 │   │
 │   ├── models/
 │   │   ├── __init__.py
-│   │   ├── eegnet.py              # EEGNet model definition
+│   │   ├── mlp.py                 # EEGNet model definition
 │   │   ├── eeg_inception.py       # (optional)
 │   │   └── conv_lora.py           # LoRA fine-tuning module
 │   │

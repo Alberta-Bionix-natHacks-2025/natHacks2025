@@ -1,7 +1,7 @@
 '''How much electrical activity exists in specific frequency ranges'''
 import numpy as np
 from scipy import signal
-from scipy.integrate import simps
+from scipy.integrate import simpson
 
 class SpectralFeatureExtractor:
     """Extract power spectral density features from EEG"""
@@ -45,7 +45,7 @@ class SpectralFeatureExtractor:
         idx_band = np.logical_and(freqs >= freq_band[0], freqs <= freq_band[1])
         
         # Integrate power using Simpson's rule
-        band_power = simps(psd[..., idx_band], freqs[idx_band], axis=-1)
+        band_power = simpson(psd[..., idx_band], freqs[idx_band], axis=-1)
         
         return band_power
     

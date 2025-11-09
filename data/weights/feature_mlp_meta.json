@@ -1,0 +1,18 @@
+{
+  "input_dim": 50,
+  "n_classes": 2,
+  "class_names": [
+    "left",
+    "right"
+  ],
+  "hidden_dim": 64,
+  "batch_size": 64,
+  "epochs": 35,
+  "val_size": 0.2,
+  "best_val_acc": 0.8620689655172413,
+  "paths": {
+    "weights": "data/weights\\feature_mlp.pth",
+    "scaler": null
+  },
+  "use_scaler": false
+}
