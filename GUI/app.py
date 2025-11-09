@@ -40,6 +40,7 @@ def stream_eeg_data():
 
             if data.shape[1] > 0:
                 eeg_values = [data[ch, :].tolist() for ch in eeg_channels]
+                print(eegtest)
                 socketio.emit('eeg_update', {'values': eeg_values})
             socketio.sleep(0.2)
 
