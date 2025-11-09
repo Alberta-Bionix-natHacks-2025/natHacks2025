@@ -1,0 +1,92 @@
+# Imports
+import mne
+import mne.epochs as pochy
+import sklearn
+from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
+from sklearn.model_selection import train_test_split
+import numpy as np
+from mne.decoding import CSP
+
+class EEGClassifier:
+    def __init__(self):
+        self.model = LinearDiscriminantAnalysis()
+        self.is_trained = False
+
+    def fit(self, X, y):
+        """Train the model"""
+        self.model.fit(X, y)
+        self.is_trained = True
+
+    def predict(self, X):
+        """Predict labels for new data"""
+        if not self.is_trained:
+            raise RuntimeError("Model must be trained before prediction.")
+        return self.model.predict(X)
+
+    def evaluate(self, X, y_true):
+        """Evaluate accuracy on a dataset"""
+        y_pred = self.predict(X)
+        acc = np.mean(y_pred == y_true)
+        print(f"Accuracy: {acc * 100:.2f}%")
+        return acc
+
+# This code will apply filters onto the EEG signals to extract relevant features for classification
+raw_fnames = mne.datasets.eegbci.load_data(1, [3, 7])
+
+raw_list = [mne.io.read_raw_edf(f, preload=True) for f in raw_fnames]
+raw = mne.concatenate_raws(raw_list)
+
+print(raw.annotations)
+
+original_raw = raw.copy()
+
+# We want to remove high frequency noise above 50hz
+original_raw.filter(l_freq= None, h_freq = 50.0)
+
+# We want to remove slow drifts below 0.1hz
+original_raw.filter(l_freq = 0.1, h_freq = None)
+
+# We want to remove power line noise at 50Hz and 60Hz
+original_raw.notch_filter(freqs = [50, 60])
+
+original_raw.filter(8., 26., fir_design='firwin')
+
+# Finally, we will pick only the EEG channels for further processing
+original_raw.pick("eeg")
+
+# Split into different epochs based on events
+events, event_id = mne.events_from_annotations(original_raw)
+event_id = {'left_hand': 2, 'right_hand': 3}
+
+epochs = mne.Epochs(
+    raw,
+    events=events,
+    event_id=event_id,
+    tmin=0,
+    tmax=4,  # 4 seconds after event
+    baseline=None,
+    preload=True
+)
+
+print(epochs)
+#epochs = epochs.drop_bad()
+
+X = epochs.get_data() 
+#X = X.reshape(len(X), -1)              # shape: (n_epochs, n_channels, n_times)
+y = epochs.events[:, -1]  
+
+csp = CSP(n_components=6, reg=None, log=True, norm_trace=False)
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+X_train_csp = csp.fit_transform(X_train, y_train)
+X_test_csp = csp.transform(X_test)
+
+print("Training shape:", X_train.shape)  
+print("Test shape:", X_test.shape) 
+print(event_id)
+print(np.unique(y, return_counts=True))  
+
+model = EEGClassifier()
+model.fit(X_train_csp, y_train)
+y_pred = model.predict(X_train_csp)
+model.evaluate(X_test_csp, y_test)
