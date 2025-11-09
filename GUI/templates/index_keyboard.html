@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Live EEG Viewer</title>
+
+  <!-- Socket.IO -->
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+  <!-- Latest Plotly -->
+  <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 20px;
+      background: #121212;
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      height: 100vh;
+      box-sizing: border-box;
+    }
+
+    .logo-container {
+      width: 100%;
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    .logo {
+      width: 250px;
+      max-width: 80%;
+    }
+
+    /* Main grid: left (plots) and right (image + text) */
+    .content {
+      display: flex;
+      flex-direction: row;
+      justify-content: space-between;
+      width: 100%;
+      height: 90%;
+      max-width: 1400px;
+    }
+
+    .charts-container {
+      display: flex;
+      flex-direction: column;
+      width: 60%;
+      gap: 20px;
+    }
+
+    .chart {
+      width: 100%;
+      height: 200px;
+      background: #1e1e1e;
+      border-radius: 10px;
+      padding: 10px;
+    }
+
+    .right-panel {
+      width: 30%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+    }
+
+    #direction-img {
+      width: 100%;
+      border-radius: 10px;
+      background: #1e1e1e;
+      object-fit: contain;
+    }
+
+    #direction-text {
+      font-size: 2rem;
+      font-weight: bold;
+      color: #00e676;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div class="logo-container">
+    <img src="{{ url_for('static', filename='logo-white.png') }}" class="logo" alt="Logo">
+  </div>
+
+  <div class="content">
+    <!-- LEFT SIDE: EEG GRAPHS -->
+    <div class="charts-container">
+      <div id="ch0" class="chart"></div>
+      <div id="ch1" class="chart"></div>
+      <div id="ch2" class="chart"></div>
+      <div id="ch3" class="chart"></div>
+    </div>
+
+    <!-- RIGHT SIDE: IMAGE + TEXT -->
+    <div class="right-panel">
+      <img id="direction-img" src="{{ url_for('static', filename='neutral.png') }}" alt="Direction" />
+      <div id="direction-text">NEUTRAL</div>
+    </div>
+  </div>
+
+  <script>
+    const socket = io();
+
+    let keysPressed = {};
+
+    // Initialize EEG plots
+    const channels = [0, 1, 2, 3];
+    const maxPoints = 1000;
+
+    channels.forEach(ch => {
+      Plotly.newPlot(`ch${ch}`, [{
+        y: [],
+        type: 'scatter',
+        mode: 'lines',
+        line: { color: '#00e676' }
+      }], {
+        title: `EEG Channel ${ch + 1}`,
+        margin: { t: 40, l: 40, r: 20, b: 30 },
+        paper_bgcolor: '#1e1e1e',
+        plot_bgcolor: '#1e1e1e',
+        font: { color: '#fff' },
+        yaxis: { range: [-10000, 10000] }
+      });
+    });
+
+    // Update EEG data
+    socket.on('eeg_update', data => {
+      const values = data.values;
+      if (!values || !values.length) return;
+
+      values.forEach((channelData, ch) => {
+        Plotly.extendTraces(`ch${ch}`, { y: [channelData] }, [0], maxPoints);
+      });
+    });
+
+
+// Update direction image + text
+function updateDirection(direction) {
+    const img = document.getElementById('direction-img');
+    const text = document.getElementById('direction-text');
+  
+    direction = direction.toUpperCase();
+  
+    if (direction === "LEFT") {
+       img.src = "{{ url_for('static', filename='left.png') }}";
+      text.textContent = "LEFT";
+      text.style.color = "#00b0ff";
+    } else if (direction === "RIGHT") {
+      img.src = "{{ url_for('static', filename='right.png') }}";
+      text.textContent = "RIGHT";
+      text.style.color = "#ff4081";
+    } else {
+      img.src = "{{ url_for('static', filename='neutral.png') }}";
+      text.textContent = "NEUTRAL";
+      text.style.color = "#00e676";
+    }
+  }
+  
+  // Listen for server-sent updates (optional)
+  socket.on('direction_update', data => {
+    if (data.direction) updateDirection(data.direction);
+  });
+  
+  // KEYBOARD HANDLING
+  document.addEventListener('keydown', (event) => {
+    if (event.key === "ArrowLeft") keysPressed["ArrowLeft"] = true;
+    if (event.key === "ArrowRight") keysPressed["ArrowRight"] = true;
+    updateCurrentDirection();
+  });
+  
+  document.addEventListener('keyup', (event) => {
+    if (event.key === "ArrowLeft") keysPressed["ArrowLeft"] = false;
+    if (event.key === "ArrowRight") keysPressed["ArrowRight"] = false;
+    updateCurrentDirection();
+  });
+  
+  // Determine current direction based on pressed keys
+  function updateCurrentDirection() {
+    let direction = "NEUTRAL";
+  
+    if (keysPressed["ArrowLeft"] && !keysPressed["ArrowRight"]) direction = "LEFT";
+    else if (keysPressed["ArrowRight"] && !keysPressed["ArrowLeft"]) direction = "RIGHT";
+  
+    updateDirection(direction);
+    socket.emit('direction_update', { direction: direction });
+  }
+      
+  </script>
+</body>
+</html>
