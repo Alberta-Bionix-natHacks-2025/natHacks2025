@@ -145,15 +145,15 @@
       const text = document.getElementById('direction-text');
 
       if (direction === "LEFT") {
-        img.src = "assets/left.png";
+        img.src = "{{ url_for('static', filename='left.png') }}";
         text.textContent = "LEFT";
         text.style.color = "#00b0ff";
       } else if (direction === "RIGHT") {
-        img.src = "assets/right.png";
+        img.src = "{{ url_for('static', filename='right.png') }}";
         text.textContent = "RIGHT";
         text.style.color = "#ff4081";
       } else {  
-        img.src = "assets/neutral.png";
+        img.src = "{{ url_for('static', filename='neutral.png') }}";
         text.textContent = "NEUTRAL";
         text.style.color = "#00e676";
       }

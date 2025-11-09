@@ -46,6 +46,7 @@ def stream_eeg_data():
                 eeg_values = [data[ch, :].tolist() for ch in eeg_channels]
                 # print(eeg_values)
                 socketio.emit('eeg_update', {'values': eeg_values})
+                socketio.emit('direction_update', {'direction': 'NEUTRAL'})
             socketio.sleep(0.2)
 
     except Exception as e:
