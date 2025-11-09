@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>EEG Live Plot</title>
+    <script src="https://cdn.socket.io/4.0.1/socket.io.min.js"></script>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  </head>
+  <body>
+    <h1>Real-Time EEG (Ganglion)</h1>
+    <div id="chart" style="width:90%;height:500px;margin:auto;"></div>
+
+    <script>
+      const socket = io();
+      const bufferLength = 1000;   // samples to show on screen
+
+      let xData = Array(bufferLength).fill(0).map((_, i) => i);
+      let yData = Array(bufferLength).fill(0);
+
+      const layout = {
+        title: "EEG Channel 1",
+        margin: { t: 40 },
+        xaxis: { title: "Samples" },
+        yaxis: { title: "µV", range: [-200, 200] }
+      };
+
+      Plotly.newPlot("chart", [{ x: xData, y: yData, mode: "lines", line: { color: "blue" } }], layout);
+
+      socket.on("eeg_update", data => {
+        const newVals = data.values;
+        yData = yData.concat(newVals).slice(-bufferLength);
+        xData = Array(yData.length).fill(0).map((_, i) => i);
+        Plotly.update("chart", { x: [xData], y: [yData] });
+      });
+    </script>
+  </body>
+</html>
