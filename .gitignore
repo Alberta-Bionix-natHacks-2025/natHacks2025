@@ -1,3 +1,6 @@
+# Virtual Environment
+.bci
+_pycache_
 # Data
 data/eeg/raw/**
 !data/eeg/raw/.gitkeep
