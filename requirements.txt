@@ -1,0 +1,9 @@
+numpy
+scipy
+scikit-learn
+torch
+moabb
+mne
+joblib
+ipywidgets
+braindecode

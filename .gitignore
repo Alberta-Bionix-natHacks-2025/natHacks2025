@@ -1,2 +1,9 @@
+# Data
+data/eeg/raw/**
+!data/eeg/raw/.gitkeep
+
+data/processed/**
+!data/processed/.gitkeep
+
 # Virtual Environments
 .bci 
