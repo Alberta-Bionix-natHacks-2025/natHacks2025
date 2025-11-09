@@ -1,5 +1,5 @@
 # natHacks2025 - Neuromotion
-Alberta Bionix's natHacks 2025 project repository. An application that uses the OpenBCI headset to record EEG signals that capture motor imagery and feeds them into a machine learning model to predict intended movements. 
+An application that uses the OpenBCI headset to record EEG signals that capture motor imagery and feeds them into a machine learning model to predict intended movements. 
 
 ## Running The Application
 1. Put on OpenBCI headset and secure it tightly onto head
