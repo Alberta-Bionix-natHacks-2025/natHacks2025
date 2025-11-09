@@ -31,7 +31,7 @@ def producer(board):
         
         #Get eeg channels
         eeg_channels = BoardShim.get_eeg_channels(board.get_board_id())
-        sampling_rate = board.get_sampling_rate()
+        sampling_rate = board.get_sampling_rate(BoardIds.GANGLION_BOARD.value)
         
         #Filter out noise & bandpass.
         
@@ -41,7 +41,7 @@ def producer(board):
         
         
         #model value
-        consumer(2)
+
 
         for ch in eeg_channels:
             DataFilter.perform_bandpass(data[ch], sampling_rate, 1.0, 50.0, 2, FilterTypes.BUTTERWORTH.value, 0)
@@ -57,9 +57,9 @@ def producer(board):
             
         time.sleep(0.5)  # window interval
 
-def consumer(status):
+def consumer():
     while True:
-        data = data_queue.get()
+        status = data_queue.get()
         start = time.time()
 
         # Show on GUI?
