@@ -1,3 +1,7 @@
+import eventlet
+
+eventlet.monkey_patch()
+
 import time
 import numpy as np
 import threading
@@ -6,7 +10,7 @@ from flask_socketio import SocketIO
 from brainflow.board_shim import BoardShim, BrainFlowInputParams, BoardIds
 
 app = Flask(__name__)
-socketio = SocketIO(app, cors_allowed_origins="*")
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode="eventlet")
 
 streaming = True
 
@@ -40,7 +44,7 @@ def stream_eeg_data():
 
             if data.shape[1] > 0:
                 eeg_values = [data[ch, :].tolist() for ch in eeg_channels]
-                print(eeg_values)
+                # print(eeg_values)
                 socketio.emit('eeg_update', {'values': eeg_values})
             socketio.sleep(0.2)
 
@@ -56,7 +60,7 @@ def on_connect():
     print("Client connected")
 
 if __name__ == '__main__':
-    thread = threading.Thread(target=stream_eeg_data, daemon=True)
-    thread.start()
-    # socketio.start_background_task(target=stream_eeg_data)
+    # thread = threading.Thread(target=stream_eeg_data, daemon=True)
+    # thread.start()
+    socketio.start_background_task(target=stream_eeg_data)
     socketio.run(app, host='0.0.0.0', port=5000, debug=True)
