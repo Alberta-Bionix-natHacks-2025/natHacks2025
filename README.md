@@ -1,6 +1,16 @@
 # natHacks2025 - Neuromotion
 An application that uses the OpenBCI headset to record EEG signals that capture motor imagery and feeds them into a machine learning model to predict intended movements. 
 
+## Built With
+* [![Python][Python.org]][Python-url]
+* [![HTML5][HTML5.badge]][HTML5-url]
+
+[Python.org]: https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white
+[Python-url]: https://www.python.org/
+
+[HTML5.badge]: https://img.shields.io/badge/HTML5-E34F26?style=for-the-badge&logo=html5&logoColor=white
+[HTML5-url]: https://developer.mozilla.org/en-US/docs/Web/Guide/HTML/HTML5
+
 ## Running The Application
 1. Put on OpenBCI headset and secure it tightly onto head.
 2. Run app.py
@@ -44,4 +54,6 @@ Include a ReadMe file explaining your project, how to access it, and any extra m
 [Presentation slides](https://docs.google.com/presentation/d/1h2WjvpodQrcb_n5vvOtkd0tqTo_iaAlo-Vs2vEI9-z0/edit?usp=sharing) - Slides used for presentation. \
 [Training dataset](https://physionet.org/content/eegmmidb/1.0.0/)  - The data we used to train the machine learning model.
 
-## Credits
+## License
+
+
