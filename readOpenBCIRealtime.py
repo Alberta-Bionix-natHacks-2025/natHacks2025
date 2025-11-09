@@ -53,7 +53,7 @@ def consumer():
 if __name__ == "__main__":
     board = realtime_ganglion_stream()
     board.prepare_session()
-    board.start_stream(45000)
+    board.start_stream()
 
     # Run threads separately
     threading.Thread(target=producer, daemon=True, args=(board,)).start()
