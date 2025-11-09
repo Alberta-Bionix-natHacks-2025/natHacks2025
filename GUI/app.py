@@ -39,10 +39,8 @@ def stream_eeg_data():
             data = board.get_current_board_data(sampling_rate)
 
             if data.shape[1] > 0:
-                # Example: send first EEG channel only
-                eeg = data[eeg_channels[0], :].tolist()
-                print(eegtest)
-                socketio.emit('eeg_update', {'values': eeg})
+                eeg_values = [data[ch, :].tolist() for ch in eeg_channels]
+                socketio.emit('eeg_update', {'values': eeg_values})
             socketio.sleep(0.2)
 
     except Exception as e:
