@@ -45,7 +45,7 @@ def producer(board):
 
         for ch in eeg_channels:
             DataFilter.perform_bandpass(data[ch], sampling_rate, 1.0, 50.0, 2, FilterTypes.BUTTERWORTH.value, 0)
-            DataFilter.perform_bandstop(data[ch], sampling_rate, 60.0, 2.0, 2, FilterTypes.BUTTERWORTH.value, 0)
+            # DataFilter.perform_bandstop(data[ch], sampling_rate, 60.0, 2.0, 2, FilterTypes.BUTTERWORTH.value, 0)
 
         try:
             data_queue.put_nowait(data)
