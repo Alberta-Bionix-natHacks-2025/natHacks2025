@@ -3,6 +3,7 @@ An application that uses the OpenBCI headset to record EEG signals that capture 
 
 ## Built With
 * [![Python][Python.org]][Python-url]
+* [![Jupyter][Jupyter.badge]][Jupyter-url]
 * [![HTML5][HTML5.badge]][HTML5-url]
 
 [Python.org]: https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white
