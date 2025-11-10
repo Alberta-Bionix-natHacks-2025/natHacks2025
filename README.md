@@ -83,6 +83,13 @@ An application that uses the OpenBCI headset to record EEG signals that capture 
 ## Materials
 [Presentation slides](https://docs.google.com/presentation/d/1h2WjvpodQrcb_n5vvOtkd0tqTo_iaAlo-Vs2vEI9-z0/edit?usp=sharing) - Slides used for presentation. \
 [Training dataset](https://physionet.org/content/eegmmidb/1.0.0/)  - The data we used to train the machine learning model.
+## Sources
+[1]H. Yang, J. Wan, Y. Jin, X. Yu, and Y. Fang, “EEG- and EMG-Driven Poststroke Rehabilitation: A Review,” IEEE Sensors Journal, vol. 22, no. 24, pp. 23649–23660, Dec. 2022, doi: https://doi.org/10.1109/JSEN.2022.3220930.
+
+[2]B. Guan, D. Anderson, L. Chen, S. Feng, and H. Zhou, “Global, regional and national burden of traumatic brain injury and spinal cord injury, 1990–2019: a systematic analysis for the Global Burden of Disease Study 2019,” BMJ Open, vol. 13, no. 10, pp. e075049–e075049, Oct. 2023, doi: https://doi.org/10.1136/bmjopen-2023-075049.
+
+[3]World Health Organization, “Spinal Cord Injury,” World Health Organization, Apr. 16, 2024. https://www.who.int/news-room/fact-sheets/detail/spinal-cord-injury
+
 
 ## License
 Distributed under the project_license. See `license.txt` for more information.
