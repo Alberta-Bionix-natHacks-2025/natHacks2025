@@ -12,9 +12,17 @@ An application that uses the OpenBCI headset to record EEG signals that capture 
 [HTML5-url]: https://developer.mozilla.org/en-US/docs/Web/Guide/HTML/HTML5
 
 ## Running The Application
-1. Put on OpenBCI headset and secure it tightly onto head.
-2. Run GUI/app.py
-3. Open the browser and access localhost:5000.
+1. Put on OpenBCI (Running the ganglion unit) headset.
+2. Apply electrodes on fp1, fp2, c3, c4.
+3. Secure contact on electrodes to head.
+4. Run GUI/app.py (python3 GUI/app.py)
+5. Ensure the connection is working in the console
+6. Open the browser and access localhost:5000.
+7. Check EEG channel graphs updating in real-time
+8. Imagine moving your right/left arm.
+9. GUI should display the correct information (RIGHT/LEFT below the model visual)
+10. Imagine not moving either.
+11. GUI should display the correct information (NEUTRAL below the model visual)
 
 ## Python Packages
    ### [MNE](https://mne.tools/stable/index.html)
