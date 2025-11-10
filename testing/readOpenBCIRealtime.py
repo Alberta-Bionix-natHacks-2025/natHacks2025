@@ -5,8 +5,8 @@ import queue
 from brainflow.board_shim import BoardShim, BrainFlowInputParams, BoardIds
 from brainflow.data_filter import DataFilter, FilterTypes
 
-from csp import CSP
-from spectral_feature_extractor import SpectralFeatureExtractor
+from testing.csp import CSP
+from testing.spectral_feature_extractor import SpectralFeatureExtractor
 
 window_size = 40
 data_queue = queue.Queue(maxsize=10)
