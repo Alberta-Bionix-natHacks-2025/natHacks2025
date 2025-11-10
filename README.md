@@ -13,7 +13,7 @@ An application that uses the OpenBCI headset to record EEG signals that capture 
 
 ## Running The Application
 1. Put on OpenBCI headset and secure it tightly onto head.
-2. Run app.py
+2. Run GUI/app.py
 3. Open the browser and access localhost:5000.
 
 ## Python Packages
@@ -26,22 +26,22 @@ An application that uses the OpenBCI headset to record EEG signals that capture 
    ```py
    pip install pytorch
    ```
-   > Used to build and train the machine learning model that classifies EEG motor imagery signals. \
+   > Used to build and train the machine learning model that classifies EEG motor imagery signals. 
    ### [Brainflow](https://brainflow.org/get_started/?platform=windows&language=python&environ=pip&) 
    ```py
    pip install brainflow
    ```
-   > Handles communication with the OpenBCI headset and streams EEG data for processing. \
+   > Handles communication with the OpenBCI headset and streams EEG data for processing. 
    ### [Eventlet](https://eventlet.readthedocs.io/en/latest/) 
    ```py
    pip install eventlet
    ```
-   > Enables real-time data streaming and asynchronous communication between the backend and GUI. \
+   > Enables real-time data streaming and asynchronous communication between the backend and GUI. 
    ### [Numpy](https://numpy.org/) 
    ```py
    pip install numpy
    ```
-   > Provides fast numerical operations and efficient handling of EEG data arrays. \
+   > Provides fast numerical operations and efficient handling of EEG data arrays. 
    ### [Threading](https://docs.python.org/3/library/threading.html)
    ```py
    pip install threading
